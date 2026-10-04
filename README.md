@@ -2,7 +2,7 @@
 
 > **一个大概什么也不做的技能。**
 
-![咖喱狗与 Just 猫的手绘宣传图：没用得很认真。](docs/images/handdrawn-cover.png)
+![咖喱狗与 Just 猫的手绘宣传图：没用得很认真。](docs/images/handdrawn-cover-v2.png)
 
 `uselessMaybe` 是一项故意不解决问题的 Agent skill。它根据调用者提供的运行信号，偶尔送出一句冷幽默、一个彩蛋或一张看起来很正式的菜单。大多数时候，程序的真实输出是：
 
