@@ -1,0 +1,5 @@
+interface:
+  display_name: "uselessMaybe"
+  short_description: "在工具调用、重试或重复动作后，偶尔出现一句无用的冷幽默"
+policy:
+  allow_implicit_invocation: true

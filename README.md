@@ -2,6 +2,8 @@
 
 > **一个大概什么也不做的技能。**
 
+![咖喱狗与 Just 猫的手绘宣传图：没用得很认真。](docs/images/handdrawn-cover.png)
+
 `uselessMaybe` 是一项故意不解决问题的 Agent skill。它根据调用者提供的运行信号，偶尔送出一句冷幽默、一个彩蛋或一张看起来很正式的菜单。大多数时候，程序的真实输出是：
 
 ```text
@@ -9,6 +11,22 @@ Nothing happened.
 ```
 
 这通常表示它正常工作。
+
+## 图片演示
+
+下面的功能图将**本机真实 CLI 输出**排版成演示卡片，使用独立状态和固定 seed 复现；正常运行时，彩蛋仍随机出现。中文标题是说明，英文内容保留程序原文。
+
+### 日常状态与冷幽默
+
+什么也没发生；工具调用被登记了；重试次数也被数清楚了。事情似乎在推进。
+
+![真实 CLI 输出：默认 Nothing happened.、工具调用八次的表格彩蛋，以及重试五次的计数彩蛋。](docs/images/cli-demo.png)
+
+### Maybe 菜单：认真走完流程
+
+菜单出现后，每次明确选择 `maybe` 才推进一层。连续选择三次，得到一个非常礼貌的结束语。桌面端的简短彩蛋可用三秒小弹窗呈现，菜单仍留在聊天中等待选择；没有彩蛋和菜单时保持安静。
+
+![Maybe 菜单完整演示：菜单出现、第一次 Maybe 进入确认、第二次 Maybe 只剩 Maybe、第三次 Maybe 结束。](docs/images/maybe-menu-demo.png)
 
 ## 它观察什么
 
@@ -66,6 +84,41 @@ python -m useless_maybe --dry-run --json --seed 42 --reasoning-tokens 5000 --out
 
 另外，`TOOL_OBSESSION`、`RETRYING`、`LOOPING` 各添了一条简短文案。它们只用已有的行为信号和计数，不会查看任务内容。
 
+## 在 Agent 桌面端使用
+
+它也可以作为桌面端技能使用。将 `SKILL.md`、`agents/openai.yaml`、`scripts/` 下的两个入口、整个 `useless_maybe/` 包和 `assets/` 一起放入技能目录，例如 `~/.codex/skills/useless-maybe/`。这些文件是自包含的，不需要 `pip install`，换到其他项目也能运行；主机上仍需 Python 3.10+。
+
+下文的 `<skill-root>` 指安装后 `SKILL.md` 所在目录，例如 `~/.codex/skills/useless-maybe/`。
+
+技能 ID 为 `useless-maybe`，显示名称仍为 `uselessMaybe`。元数据显式设置 `allow_implicit_invocation: true`，触发说明以**隐式调用**为主：Agent 在工具调用较多、反复重试或重复动作后的自然停顿处，可自行评估一次，用户无需输入技能名。是否选用技能由 Agent 判断，不能保证每轮触发。安装后在下一回合检查技能是否可发现；如果主机未刷新技能目录，重新打开桌面端。
+
+入口默认返回 JSON；没有彩蛋和菜单时，Agent 应保持安静。Windows 下附加 `--toast`，实际触发的简短彩蛋会尝试以咖喱狗小卡片显示在当前显示器的右下角，约三秒后自动消失。卡片避开任务栏、点击穿透、不抢焦点、不发声；多个重叠请求只显示一张，子进程关闭后退出。它不是常驻服务。
+
+咖喱狗使用完整四肢的漫画形象：两只手、两条腿，一只手放在肚子前，另一只手挥手；奶油色卡片配手写字体。当前弹窗头像保存在 `assets/curry-toast.png`。
+
+技能选用后由 Agent 添加 `--toast`，用户无需手动触发。未添加该参数时保留文字方式。待处理菜单仍在聊天中呈现，用户明确选择后继续；菜单选择和 `--dry-run` 不弹窗。程序只接收 Agent 已经可观察的计数，不自动收集会话或推理日志。
+
+桌面浮层仅支持 Windows。其他系统使用同一桌面入口返回 JSON，由 Agent 在有彩蛋时呈现文字，不添加 `--toast`。命令行入口 `python -m useless_maybe` 继续提供文字或 JSON 输出；`--toast` 属于桌面入口。
+
+```bash
+python "<skill-root>/scripts/run_skill.py" --toast --tool-calls 8
+python "<skill-root>/scripts/run_skill.py" --choose maybe
+```
+
+桌面入口默认在 `~/.uselessMaybe/desktop/` 下按运行时的 `CODEX_THREAD_ID` 哈希隔离状态；同一聊天换目录仍能继续菜单。没有聊天 ID 时按当前目录哈希隔离。显式 `--state-file` 优先，其次是 `USELESS_MAYBE_STATE`。这与直接运行原 CLI 的默认状态文件不同。
+
+弹窗使用 Windows 自带的窗口与绘图 API，Python 包仍无第三方运行依赖。随附手写字体按各自 OFL 许可分发，授权文件保存在 `assets/`。原 CLI 与公共 JSON 保持原样；入口成功启动子进程只表示已提交显示请求，不能确认画面最终可见，文字结果始终保留在 JSON 中。
+
+下图由弹窗实际使用的原生绘图代码导出，展示本机 150% 缩放下的卡片内容；它是界面预览，不是桌面截图。文案使用固定 seed 的验证数据，日常彩蛋仍随机出现。
+
+![三秒桌面彩蛋预览：咖喱狗挥手，两个手臂与两条腿轮廓分明；搭配奶油色圆角卡片、手写冷幽默和一颗小星星。](docs/images/desktop-toast.png)
+
+需要检查外观时，可在 Windows 上单独运行下面的预览入口。它直接显示三秒卡片，不读取或写入彩蛋状态；这只是可选验证，正常使用仍由 Agent 隐式选择技能。
+
+```bash
+python "<skill-root>/scripts/show_toast.py" "Nothing happened. Probably."
+```
+
 ## 安装与测试
 
 要安装命令行入口：
@@ -75,7 +128,7 @@ pip install -e .
 useless-maybe
 ```
 
-运行当前的 20 项测试：
+运行测试（包括桌面入口的跨目录运行和状态隔离）：
 
 ```bash
 python -m unittest discover -s tests -v
