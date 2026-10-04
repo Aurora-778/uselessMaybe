@@ -61,4 +61,15 @@ EGGS: tuple[Egg, ...] = (
     Egg("overflow", "USELESSNESS OVERFLOW\n\nNothing happened.", 0.15, min_uselessness=97),
     Egg("maybe_menu", "Something may have happened.", 0.22, min_invocations=8, menu_id="maybe_menu"),
     Egg("debug_menu", "MAYBE DEBUG MENU", 0.08, min_uselessness=88, min_invocations=12, menu_id="debug_menu"),
+    Egg("tool_form", "Tool calls observed: {tool_calls:,}.\nThe form has no field for results.", 0.8, frozenset({"TOOL_OBSESSION"})),
+    Egg("retry_counted", "Retry count: {retries:,}.\nThe counting procedure worked on the first attempt.", 0.8, frozenset({"RETRYING"})),
+    Egg("loop_agenda", "Repeated actions: {repeated_actions:,}.\nNo precedent has been established.", 0.8, frozenset({"LOOPING"})),
+)
+
+
+# A separate three-chapter thread; core.py decides if and when each chapter appears.
+PAPERWORK_EGGS: tuple[Egg, ...] = (
+    Egg("paperwork_received", "Request received.\nNo staff have been assigned.", weight=0.7, min_invocations=8),
+    Egg("paperwork_staffed", "Staff assigned.\nNo work has been assigned.", weight=0.7, min_invocations=8),
+    Egg("paperwork_completed", "Work completed.\nThere was no work assigned.", weight=0.7, min_invocations=8),
 )

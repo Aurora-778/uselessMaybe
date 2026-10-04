@@ -5,10 +5,10 @@ import random
 from pathlib import Path
 
 from .detectors import detect
-from .eggs import EGGS, Egg
+from .eggs import EGGS, PAPERWORK_EGGS, Egg
 from .menu import build_menu
 from .models import AgentSignals, Detection, EvaluationResult
-from .state import load_state, public_state, resolve_state_path, save_state
+from .state import RECENT_EVENT_LIMIT, load_state, public_state, resolve_state_path, save_state
 
 
 DETECTION_WEIGHTS = {
@@ -20,6 +20,8 @@ DETECTION_WEIGHTS = {
     "CONTEXT_PRESSURE": 7.0,
     "EXPOSED_REASONING_METADATA": 3.0,
 }
+CONTEXTUAL_WEIGHT_MULTIPLIER = 3.0
+PAPERWORK_INTERVAL = 5
 
 
 def calculate_maybe_score(detections: list[Detection], invocations: int) -> float:
@@ -45,19 +47,53 @@ def egg_probability(maybe_score: float, invocations: int) -> float:
     return min(0.65, 0.02 + maybe_score * 0.005 + min(0.10, invocations * 0.002))
 
 
-def _weighted_choice(rng: random.Random, eggs: list[Egg]) -> Egg | None:
+def _weighted_choice(
+    rng: random.Random,
+    eggs: list[Egg],
+    detections: list[Detection] | tuple[Detection, ...] = (),
+) -> Egg | None:
     if not eggs:
         return None
-    total = sum(max(0.0, e.weight) for e in eggs)
+    names = {d.name for d in detections}
+    weights = []
+    for egg in eggs:
+        matches_context = (
+            bool(egg.requires_any or egg.requires_all)
+            and (not egg.requires_any or bool(egg.requires_any & names))
+            and egg.requires_all.issubset(names)
+        )
+        multiplier = CONTEXTUAL_WEIGHT_MULTIPLIER if matches_context else 1.0
+        weights.append(max(0.0, egg.weight) * multiplier)
+    total = sum(weights)
     if total <= 0:
         return None
     point = rng.random() * total
     running = 0.0
-    for egg in eggs:
-        running += max(0.0, egg.weight)
-        if point <= running:
+    for egg, weight in zip(eggs, weights):
+        running += weight
+        if point < running:
             return egg
-    return eggs[-1]
+    return next(egg for egg, weight in reversed(list(zip(eggs, weights))) if weight > 0)
+
+
+def _eligible_eggs(
+    detections: list[Detection], uselessness: float, invocations: int, state: dict,
+) -> list[Egg]:
+    candidates = list(EGGS)
+    seen = set(state.get("seen_events", []))
+    # Only the next chapter enters the lottery; quiet calls also count toward the gap.
+    for chapter in PAPERWORK_EGGS:
+        if chapter.id not in seen:
+            if invocations - int(state.get("paperwork_last_invocation", 0)) >= PAPERWORK_INTERVAL:
+                candidates.append(chapter)
+            break
+    recent = set(state.get("recent_events", []))
+    return [
+        egg for egg in candidates
+        if egg.id not in recent
+        and not (state.get("pending_menu") and egg.menu_id)
+        and egg.eligible(detections, uselessness, invocations)
+    ]
 
 
 def _record_event(state: dict, event_id: str) -> None:
@@ -66,6 +102,11 @@ def _record_event(state: dict, event_id: str) -> None:
     seen = state.setdefault("seen_events", [])
     if event_id not in seen:
         seen.append(event_id)
+    recent = state.setdefault("recent_events", [])
+    recent.append(event_id)
+    state["recent_events"] = recent[-RECENT_EVENT_LIMIT:]
+    if any(chapter.id == event_id for chapter in PAPERWORK_EGGS):
+        state["paperwork_last_invocation"] = int(state.get("invocations", 0))
 
 
 def _milestone_event(state: dict) -> tuple[str, str, str | None] | None:
@@ -73,9 +114,9 @@ def _milestone_event(state: dict) -> tuple[str, str, str | None] | None:
     seen = set(state.get("seen_events", []))
     if n >= 13 and "maybe_noticed" not in seen:
         return "maybe_noticed", "Maybe noticed.", None
-    if n >= 21 and "first_maybe_menu" not in seen:
+    if n >= 21 and "first_maybe_menu" not in seen and not state.get("pending_menu"):
         return "first_maybe_menu", "Something may have happened.", "maybe_menu"
-    if n >= 37 and "you_again" not in seen:
+    if n >= 37 and "you_again" not in seen and not state.get("pending_menu"):
         return "you_again", f"You have invoked uselessMaybe {n} times.\n\nWhy?", "maybe_menu"
     return None
 
@@ -93,6 +134,7 @@ def evaluate(
     work = dict(state)
     work["event_counts"] = dict(state.get("event_counts", {}))
     work["seen_events"] = list(state.get("seen_events", []))
+    work["recent_events"] = list(state.get("recent_events", []))
     work["invocations"] = int(work.get("invocations", 0)) + 1
     invocations = work["invocations"]
 
@@ -105,6 +147,12 @@ def evaluate(
     event_id = None
     message = "Nothing happened."
     menu = None
+    if work.get("pending_menu"):
+        try:
+            menu = build_menu(work["pending_menu"])
+        except ValueError:
+            # Match choose()'s recovery from a menu ID that no longer exists.
+            work["pending_menu"] = None
     triggered = False
 
     milestone = _milestone_event(work)
@@ -116,8 +164,8 @@ def evaluate(
             work["pending_menu"] = menu_id
             menu = build_menu(menu_id)
     elif randomizer.random() < egg_probability(maybe_score, invocations):
-        eligible = [e for e in EGGS if e.eligible(detections, uselessness, invocations)]
-        egg = _weighted_choice(randomizer, eligible)
+        eligible = _eligible_eggs(detections, uselessness, invocations, work)
+        egg = _weighted_choice(randomizer, eligible, detections)
         if egg:
             event_id = egg.id
             message = egg.render(s, uselessness, invocations)

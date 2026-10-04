@@ -7,6 +7,7 @@ from typing import Any
 
 
 STATE_VERSION = 1
+RECENT_EVENT_LIMIT = 5
 
 
 def default_state() -> dict[str, Any]:
@@ -16,6 +17,8 @@ def default_state() -> dict[str, Any]:
         "nothing_counter": 0,
         "event_counts": {},
         "seen_events": [],
+        "recent_events": [],
+        "paperwork_last_invocation": 0,
         "pending_menu": None,
         "last_uselessness_index": 0.0,
     }
@@ -43,6 +46,15 @@ def load_state(path: Path) -> dict[str, Any]:
         for key in base:
             if key in data:
                 base[key] = data[key]
+    recent = base["recent_events"]
+    base["recent_events"] = (
+        [event for event in recent if isinstance(event, str)][-RECENT_EVENT_LIMIT:]
+        if isinstance(recent, list) else []
+    )
+    try:
+        base["paperwork_last_invocation"] = max(0, int(base["paperwork_last_invocation"]))
+    except (TypeError, ValueError, OverflowError):
+        base["paperwork_last_invocation"] = 0
     return base
 
 
