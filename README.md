@@ -16,16 +16,10 @@ Nothing happened.
 
 ## 一句话让 Agent 安装
 
-把下面这段话复制给你的 Agent 即可。在 Codex 中会安装到 `~/.codex/skills/useless-maybe/`；其他支持 `SKILL.md` 的客户端，由 Agent 使用该客户端的技能目录。
+把下面这一行复制给你的 Agent 即可。在 Codex 中会安装到 `~/.codex/skills/useless-maybe/`；其他支持 `SKILL.md` 的客户端，由 Agent 使用该客户端的技能目录。
 
 ```text
-请帮我安装这个 Agent skill：https://github.com/Kalsook041/uselessMaybe。先读取仓库的 README.md 和 SKILL.md，再按当前客户端的技能目录安装；Codex 使用 ~/.codex/skills/useless-maybe/。
-请一起安装 SKILL.md、agents/openai.yaml、scripts/run_skill.py、scripts/show_toast.py、整个 useless_maybe/ 和 assets/，不要只复制 SKILL.md。不需要 pip install，检查本机有 Python 3.10+ 即可。
-保留 allow_implicit_invocation: true，正常使用由 Agent 在工具调用较多、重试或重复动作后的自然停顿处自行选择，每个用户回合最多评估一次；没有彩蛋和菜单时保持安静。
-Windows 使用带 --toast 的桌面入口，简短彩蛋显示三秒，不抢焦点；其他系统使用文字方式。
-安装后用独立的临时 --state-file 配合 --dry-run 验证入口从其他工作目录也能返回有效 JSON，不消耗我的日常彩蛋状态。
-若安装目录已有内容，先备份再更新。
-最后告诉我安装位置、验证结果，以及客户端是否需要重新打开才能发现技能。
+请按仓库说明安装并验证这个 Agent skill：https://github.com/Kalsook041/uselessMaybe
 ```
 
 安装后无需手动输入技能名。隐式调用是否发生由 Agent 判断；支持技能安装的客户端也不一定支持自动发现或隐式调用，安装验证不等于已经验证了自动触发。桌面使用细节见[在 Agent 桌面端使用](#在-agent-桌面端使用)。
